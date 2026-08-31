@@ -1,0 +1,23 @@
+
+
+
+for generating material 
+Topic
+[ JWT Authentication ]
+
+Level
+○ Beginner
+● Intermediate
+○ Advanced
+
+Learning goal
+[ Understand JWT for Node.js ]
+
+Content
+☑ Notes
+☑ Examples
+☑ MCQs
+☑ Flashcards
+☑ Viva Questions
+
+[ Generate ]
