@@ -1,4 +1,4 @@
-import Material from './material.model.js';
+import * as materialService from './material.service.js';
 
 /**
  * @desc Get all materials across all sessions
@@ -6,7 +6,7 @@ import Material from './material.model.js';
  */
 export const getAllMaterials = async (req, res) => {
   try {
-    const materials = await Material.find().sort({ createdAt: -1 });
+    const materials = await materialService.fetchMaterials();
     res.status(200).json({ success: true, count: materials.length, data: materials });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -24,13 +24,7 @@ export const createMaterial = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide sessionId, type, title, and content' });
     }
 
-    const material = await Material.create({
-      sessionId,
-      type,
-      title,
-      content,
-      order: order || 0,
-    });
+    const material = await materialService.createNewMaterial({ sessionId, type, title, content, order });
 
     res.status(201).json({ success: true, data: material });
   } catch (error) {
@@ -44,7 +38,7 @@ export const createMaterial = async (req, res) => {
  */
 export const deleteMaterial = async (req, res) => {
   try {
-    const material = await Material.findByIdAndDelete(req.params.id);
+    const material = await materialService.deleteMaterialById(req.params.id);
     if (!material) {
       return res.status(404).json({ success: false, message: 'Material not found' });
     }
