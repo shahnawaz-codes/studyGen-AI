@@ -9,6 +9,9 @@ import DemoSection from './components/DemoSection';
 import CTA from './components/CTA';
 import Footer from './components/Footer';
 import GeneratorWorkspace from './components/GeneratorWorkspace';
+import AuthSuccess from './pages/AuthSuccess';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
 
 // Landing Page View Component
 function HomeView({ onGenerateTopic }) {
@@ -42,30 +45,40 @@ export default function App() {
   const [selectedTopic, setSelectedTopic] = useState('JWT Authentication');
 
   return (
-    <Router>
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            <HomeView 
-              onGenerateTopic={({ topic }) => {
-                setSelectedTopic(topic);
-              }} 
-            />
-          } 
-        />
-        <Route path="/studio" element={<StudioView />} />
-        <Route 
-          path="*" 
-          element={
-            <HomeView 
-              onGenerateTopic={({ topic }) => {
-                setSelectedTopic(topic);
-              }} 
-            />
-          } 
-        />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <HomeView 
+                onGenerateTopic={({ topic }) => {
+                  setSelectedTopic(topic);
+                }} 
+              />
+            } 
+          />
+          <Route 
+            path="/studio" 
+            element={
+              <ProtectedRoute>
+                <StudioView />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/auth-success" element={<AuthSuccess />} />
+          <Route 
+            path="*" 
+            element={
+              <HomeView 
+                onGenerateTopic={({ topic }) => {
+                  setSelectedTopic(topic);
+                }} 
+              />
+            } 
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }

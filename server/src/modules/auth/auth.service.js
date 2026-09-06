@@ -13,7 +13,6 @@ import { User } from "./user.model.js";
  * - Return the URL string.
  */
 export const getGoogleAuthUrl = () => {
-  // TODO: Build the Google Auth URL string here
   const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
   const options = {
     redirect_uri: process.env.GOOGLE_REDIRECT_URI,
@@ -38,7 +37,6 @@ export const getGoogleAuthUrl = () => {
  * - Return the response data containing access_token & id_token.
  */
 export const getGoogleTokens = async (code) => {
-  // TODO: Implement HTTP POST using axios to exchange code for tokens
   const url = "https://oauth2.googleapis.com/token";
   const values = {
     code,
@@ -66,7 +64,6 @@ export const getGoogleTokens = async (code) => {
  * - Return response data (id, email, name, picture).
  */
 export const getGoogleUserInfo = async (accessToken) => {
-  // TODO: Implement HTTP GET to retrieve profile details using access token
   const response = await axios.get(
     "https://www.googleapis.com/oauth2/v2/userinfo",
     {
@@ -84,7 +81,6 @@ export const getGoogleUserInfo = async (accessToken) => {
  * - Return the user document.
  */
 export const findOrCreateUser = async (googleUser) => {
-  // TODO: Database logic to find or register user
   const { id: googleId, email, name, picture: avatar } = googleUser;
 
   let user = await User.findOne({
@@ -108,8 +104,16 @@ export const findOrCreateUser = async (googleUser) => {
  * - Use process.env.JWT_SECRET.
  */
 export const generateJwtToken = (user) => {
-  // TODO: Sign and return JWT token string
   const payload = { id: user._id, email: user.email, name: user.name };
   const secret = process.env.JWT_SECRET || "fallback_secret";
   return jwt.sign(payload, secret, { expiresIn: "7d" });
+};
+
+/**
+ * TODO 6: Verify Session JWT Token
+ * - Verifies token payload using `jwt.verify()`
+ */
+export const verifyJwtToken = (token) => {
+  const secret = process.env.JWT_SECRET || "fallback_secret";
+  return jwt.verify(token, secret);
 };
