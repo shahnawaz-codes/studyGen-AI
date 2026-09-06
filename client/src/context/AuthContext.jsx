@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
@@ -17,23 +18,19 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/auth/me', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
+        const data = await api.get('/auth/me', { token });
+        if (data.user) {
           setUser(data.user);
         } else {
-          // Token invalid or expired
           localStorage.removeItem('studygen_token');
           setToken(null);
           setUser(null);
         }
       } catch (error) {
         console.error('Failed to fetch current user:', error);
+        localStorage.removeItem('studygen_token');
+        setToken(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -44,7 +41,7 @@ export function AuthProvider({ children }) {
 
   // Trigger Google Login Redirect
   const loginWithGoogle = () => {
-    window.location.href = 'http://localhost:5000/api/auth/google';
+    window.location.href = `${api.baseUrl}/auth/google`;
   };
 
   // Save session token from OAuth redirect

@@ -28,6 +28,36 @@ export const normalizeGoal = (goal) => {
 };
 
 /**
+ * Helper to persist single or multi-item materials to database
+ */
+const saveMaterialHelper = async (session, type, generatorData, baseOrder, defaultTitle) => {
+  if (!generatorData) return null;
+
+  if (Array.isArray(generatorData)) {
+    const createdMaterials = [];
+    for (let i = 0; i < generatorData.length; i++) {
+      const mat = await Material.create({
+        sessionId: session._id,
+        type,
+        title: `${session.topic} ${defaultTitle} #${i + 1}`,
+        content: generatorData[i],
+        order: baseOrder + i,
+      });
+      createdMaterials.push(mat);
+    }
+    return createdMaterials;
+  }
+
+  return await Material.create({
+    sessionId: session._id,
+    type,
+    title: `${session.topic} ${defaultTitle}`,
+    content: generatorData,
+    order: baseOrder,
+  });
+};
+
+/**
  * Create a new StudySession record
  */
 export const createSession = async ({ topic, difficulty, goal, learningGoal, context, userId }) => {
@@ -81,16 +111,8 @@ export const deleteSession = async (sessionId, userId = null) => {
 export const generateRoadmapMaterialForSession = async (sessionId) => {
   const session = await StudySession.findById(sessionId);
   if (!session) return null;
-
-  const roadmapData = await generateRoadmapForTopic(session.topic, session.difficulty, session.learningGoal);
-
-  return await Material.create({
-    sessionId: session._id,
-    type: 'roadmap',
-    title: `${session.topic} Roadmap`,
-    content: roadmapData,
-    order: 1,
-  });
+  const data = await generateRoadmapForTopic(session.topic, session.difficulty, session.learningGoal);
+  return await saveMaterialHelper(session, 'roadmap', data, 1, 'Roadmap');
 };
 
 /**
@@ -99,16 +121,8 @@ export const generateRoadmapMaterialForSession = async (sessionId) => {
 export const generateNotesMaterialForSession = async (sessionId) => {
   const session = await StudySession.findById(sessionId);
   if (!session) return null;
-
-  const notesData = await generateNotesForTopic(session.topic, session.difficulty, session.learningGoal);
-
-  return await Material.create({
-    sessionId: session._id,
-    type: 'notes',
-    title: `Notes: ${session.topic}`,
-    content: notesData,
-    order: 2,
-  });
+  const data = await generateNotesForTopic(session.topic, session.difficulty, session.learningGoal);
+  return await saveMaterialHelper(session, 'notes', data, 2, 'Notes');
 };
 
 /**
@@ -117,34 +131,8 @@ export const generateNotesMaterialForSession = async (sessionId) => {
 export const generateMCQMaterialForSession = async (sessionId) => {
   const session = await StudySession.findById(sessionId);
   if (!session) return null;
-
-  const mcqsData = await generateMCQsForTopic(session.topic, session.difficulty, session.learningGoal);
-
-  const createdMaterials = [];
-  if (Array.isArray(mcqsData)) {
-    for (let i = 0; i < mcqsData.length; i++) {
-      const item = mcqsData[i];
-      const mat = await Material.create({
-        sessionId: session._id,
-        type: 'mcq',
-        title: `${session.topic} MCQ #${i + 1}`,
-        content: item,
-        order: 4 + i,
-      });
-      createdMaterials.push(mat);
-    }
-  } else {
-    const mat = await Material.create({
-      sessionId: session._id,
-      type: 'mcq',
-      title: `${session.topic} MCQs`,
-      content: mcqsData,
-      order: 4,
-    });
-    createdMaterials.push(mat);
-  }
-
-  return createdMaterials;
+  const data = await generateMCQsForTopic(session.topic, session.difficulty, session.learningGoal);
+  return await saveMaterialHelper(session, 'mcq', data, 4, 'MCQ');
 };
 
 /**
@@ -153,34 +141,8 @@ export const generateMCQMaterialForSession = async (sessionId) => {
 export const generateFlashcardMaterialForSession = async (sessionId) => {
   const session = await StudySession.findById(sessionId);
   if (!session) return null;
-
-  const flashcardsData = await generateFlashcardsForTopic(session.topic, session.difficulty, session.learningGoal);
-
-  const createdMaterials = [];
-  if (Array.isArray(flashcardsData)) {
-    for (let i = 0; i < flashcardsData.length; i++) {
-      const item = flashcardsData[i];
-      const mat = await Material.create({
-        sessionId: session._id,
-        type: 'flashcard',
-        title: `${session.topic} Flashcard #${i + 1}`,
-        content: item,
-        order: 7 + i,
-      });
-      createdMaterials.push(mat);
-    }
-  } else {
-    const mat = await Material.create({
-      sessionId: session._id,
-      type: 'flashcard',
-      title: `${session.topic} Flashcards`,
-      content: flashcardsData,
-      order: 7,
-    });
-    createdMaterials.push(mat);
-  }
-
-  return createdMaterials;
+  const data = await generateFlashcardsForTopic(session.topic, session.difficulty, session.learningGoal);
+  return await saveMaterialHelper(session, 'flashcard', data, 7, 'Flashcard');
 };
 
 /**
@@ -189,34 +151,8 @@ export const generateFlashcardMaterialForSession = async (sessionId) => {
 export const generateVivaMaterialForSession = async (sessionId) => {
   const session = await StudySession.findById(sessionId);
   if (!session) return null;
-
-  const vivaData = await generateVivaForTopic(session.topic, session.difficulty, session.learningGoal);
-
-  const createdMaterials = [];
-  if (Array.isArray(vivaData)) {
-    for (let i = 0; i < vivaData.length; i++) {
-      const item = vivaData[i];
-      const mat = await Material.create({
-        sessionId: session._id,
-        type: 'viva',
-        title: `${session.topic} Viva #${i + 1}`,
-        content: item,
-        order: 10 + i,
-      });
-      createdMaterials.push(mat);
-    }
-  } else {
-    const mat = await Material.create({
-      sessionId: session._id,
-      type: 'viva',
-      title: `${session.topic} Viva Questions`,
-      content: vivaData,
-      order: 10,
-    });
-    createdMaterials.push(mat);
-  }
-
-  return createdMaterials;
+  const data = await generateVivaForTopic(session.topic, session.difficulty, session.learningGoal);
+  return await saveMaterialHelper(session, 'viva', data, 10, 'Viva');
 };
 
 /**
@@ -225,14 +161,6 @@ export const generateVivaMaterialForSession = async (sessionId) => {
 export const generateCodeMaterialForSession = async (sessionId) => {
   const session = await StudySession.findById(sessionId);
   if (!session) return null;
-
-  const codeData = await generateCodeForTopic(session.topic, session.difficulty, session.learningGoal);
-
-  return await Material.create({
-    sessionId: session._id,
-    type: 'code',
-    title: `${session.topic} Code Example`,
-    content: codeData,
-    order: 3,
-  });
+  const data = await generateCodeForTopic(session.topic, session.difficulty, session.learningGoal);
+  return await saveMaterialHelper(session, 'code', data, 3, 'Code Example');
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import { 
   Plus, 
   Search, 
@@ -45,13 +46,7 @@ export default function StudioSidebar({
   const fetchRealHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const response = await fetch('http://localhost:5000/api/study/sessions', {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
-      const data = await response.json();
+      const data = await api.get('/study/sessions', { token });
       if (data.success && Array.isArray(data.data)) {
         setHistoryList(data.data);
       }
@@ -72,14 +67,7 @@ export default function StudioSidebar({
     if (!window.confirm('Delete this study session permanently?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/study/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
-      const data = await response.json();
+      const data = await api.delete(`/study/sessions/${sessionId}`, { token });
       if (data.success) {
         setHistoryList(prev => prev.filter(s => s._id !== sessionId));
         if (currentSessionId === sessionId) {
