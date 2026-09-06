@@ -45,10 +45,11 @@ export const createSession = async ({ topic, difficulty, goal, learningGoal, con
 };
 
 /**
- * Fetch all study sessions (history)
+ * Fetch study sessions (filtered by user if provided)
  */
-export const fetchAllSessions = async () => {
-  return await StudySession.find().sort({ createdAt: -1 }).limit(20);
+export const fetchAllSessions = async (userId = null) => {
+  const query = userId ? { userId } : {};
+  return await StudySession.find(query).sort({ createdAt: -1 }).limit(30);
 };
 
 /**
@@ -60,6 +61,18 @@ export const fetchSessionWithMaterials = async (sessionId) => {
 
   const materials = await Material.find({ sessionId: session._id }).sort({ order: 1 });
   return { session, materials };
+};
+
+/**
+ * Delete a study session and all its generated materials
+ */
+export const deleteSession = async (sessionId, userId = null) => {
+  const query = userId ? { _id: sessionId, userId } : { _id: sessionId };
+  const session = await StudySession.findOneAndDelete(query);
+  if (session) {
+    await Material.deleteMany({ sessionId: session._id });
+  }
+  return session;
 };
 
 /**

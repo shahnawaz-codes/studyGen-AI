@@ -30,6 +30,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
   // Session & generated materials state
   const [session, setSession] = useState(null);
   const [materials, setMaterials] = useState([]);
+  const [refreshHistoryKey, setRefreshHistoryKey] = useState(0);
   
   // Loading states per content type
   const [creatingSession, setCreatingSession] = useState(false);
@@ -43,25 +44,48 @@ export default function GeneratorWorkspace({ onBackToHome }) {
   const [flippedCards, setFlippedCards] = useState({});
   const [expandedViva, setExpandedViva] = useState({ 0: true });
 
-  // Reset to create a fresh study session
+  // Reset workspace to create a fresh study session
   const handleResetSession = () => {
     setSession(null);
     setMaterials([]);
     setTopicInput('');
   };
 
-  // Load a session selected from sidebar history
-  const handleSelectSession = (item) => {
+  // Load a real session selected from sidebar history
+  const handleSelectSession = async (item) => {
     setTopicInput(item.topic);
-    setDifficulty(item.difficulty || 'Intermediate');
-    setSession({
-      _id: item.id,
-      topic: item.topic,
-      difficulty: (item.difficulty || 'Intermediate').toLowerCase(),
-      learningGoal: 'interview preparation',
-      status: 'completed'
-    });
-    setMaterials(createMockMaterialForType(item.topic, 'notes', item.id));
+    if (item.difficulty) {
+      setDifficulty(item.difficulty.charAt(0).toUpperCase() + item.difficulty.slice(1));
+    }
+
+    try {
+      // Fetch full session details & generated materials from database
+      const response = await fetch(`http://localhost:5000/api/study/sessions/${item._id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      const resData = await response.json();
+      if (resData.success && resData.data) {
+        setSession(resData.data.session);
+        const loadedMaterials = resData.data.materials || [];
+        setMaterials(loadedMaterials);
+        if (loadedMaterials.length > 0) {
+          const firstType = loadedMaterials[0].type;
+          setActiveTab(firstType === 'mcq' ? 'mcqs' : firstType === 'flashcard' ? 'flashcards' : firstType);
+        } else {
+          setActiveTab('notes');
+        }
+        return;
+      }
+    } catch (error) {
+      console.log('Fetching session notice (using local state fallback):', error.message);
+    }
+
+    // Fallback if network offline
+    setSession(item);
+    setMaterials(createMockMaterialForType(item.topic, 'notes', item._id));
     setActiveTab('notes');
   };
 
@@ -90,6 +114,8 @@ export default function GeneratorWorkspace({ onBackToHome }) {
       const resData = await response.json();
       if (resData.success && resData.data) {
         setSession(resData.data);
+        // Refresh sidebar history in real time
+        setRefreshHistoryKey(prev => prev + 1);
       }
     } catch (error) {
       console.log('Backend connection notice (using local session fallback):', error.message);
@@ -123,13 +149,13 @@ export default function GeneratorWorkspace({ onBackToHome }) {
       if (resData.success && resData.data) {
         const newItems = Array.isArray(resData.data) ? resData.data : [resData.data];
         setMaterials(prev => [...prev.filter(m => m.type !== type), ...newItems]);
-        setActiveTab(type === 'mcqs' ? 'mcqs' : type);
+        setActiveTab(type === 'mcqs' ? 'mcqs' : type === 'flashcards' ? 'flashcards' : type);
       }
     } catch (error) {
       console.log(`Backend connection notice for ${type} (using client fallback):`, error.message);
       const mockMaterial = createMockMaterialForType(session.topic, type, session._id);
       setMaterials(prev => [...prev.filter(m => m.type !== type), ...mockMaterial]);
-      setActiveTab(type === 'mcqs' ? 'mcqs' : type);
+      setActiveTab(type === 'mcqs' ? 'mcqs' : type === 'flashcards' ? 'flashcards' : type);
     } finally {
       setGeneratingTypes(prev => ({ ...prev, [type]: false }));
     }
@@ -247,12 +273,13 @@ export default function GeneratorWorkspace({ onBackToHome }) {
   return (
     <div className="flex min-h-screen bg-gray-50/70 text-zinc-900 font-body">
       
-      {/* Studio Left Sidebar */}
+      {/* Studio Resizable & Responsive Left Sidebar */}
       <StudioSidebar 
         onNewSession={handleResetSession}
         onSelectSession={handleSelectSession}
         currentSessionId={session?._id}
         onBackToHome={onBackToHome}
+        refreshKey={refreshHistoryKey}
       />
 
       {/* Main Studio Workspace Body */}
@@ -278,7 +305,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
             </div>
 
             {session && (
-              <div className="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full">
+              <div className="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full shadow-2xs">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
                 <span className="text-xs font-bold text-emerald-900">Active Topic: {session.topic}</span>
               </div>
@@ -290,9 +317,9 @@ export default function GeneratorWorkspace({ onBackToHome }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 w-full">
           
           {/* Creator Configuration Card */}
-          <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm mb-8">
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-xs mb-8">
             <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-              <div className="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-xs">
                 <Sparkles className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
@@ -313,7 +340,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
                   value={topicInput}
                   onChange={(e) => setTopicInput(e.target.value)}
                   placeholder="Enter any topic (e.g. System Design, React Query, OS Scheduling)"
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold text-zinc-900 focus:outline-none focus:bg-white focus:border-zinc-900 transition-all shadow-xs"
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold text-zinc-900 focus:outline-none focus:bg-white focus:border-zinc-900 transition-all shadow-2xs"
                 />
               </div>
 
@@ -331,7 +358,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
                         onClick={() => setDifficulty(lvl)}
                         className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                           difficulty === lvl
-                            ? 'bg-zinc-900 text-white shadow-xs'
+                            ? 'bg-zinc-900 text-white shadow-2xs'
                             : 'text-zinc-600 hover:text-zinc-900'
                         }`}
                       >
@@ -353,7 +380,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
                         onClick={() => setGoal(g)}
                         className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                           goal === g
-                            ? 'bg-zinc-900 text-white shadow-xs'
+                            ? 'bg-zinc-900 text-white shadow-2xs'
                             : 'text-zinc-600 hover:text-zinc-900'
                         }`}
                       >
@@ -368,7 +395,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
               <button
                 type="submit"
                 disabled={creatingSession || !topicInput.trim()}
-                className="w-full py-4 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-4 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-sm shadow-sm hover:shadow transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 border border-zinc-800 active:scale-98"
               >
                 {creatingSession ? (
                   <>
@@ -387,7 +414,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
 
           {/* Module Action Pills Generator */}
           {session && (
-            <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm mb-8">
+            <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-xs mb-8">
               <h3 className="font-heading text-sm font-bold text-zinc-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-emerald-600" />
                 Generate Study Components
@@ -412,7 +439,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
                       disabled={isGenerating}
                       className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all cursor-pointer text-center ${
                         generated 
-                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950 font-bold shadow-xs' 
+                          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950 font-bold shadow-2xs' 
                           : 'bg-white hover:bg-gray-50 border-gray-200 text-zinc-800 font-semibold'
                       }`}
                     >
@@ -432,7 +459,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
 
           {/* Generated Material Viewer Workspace */}
           {materials.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-xs">
               
               {/* Workspace Viewer Navigation Tabs */}
               <div className="flex items-center gap-2 overflow-x-auto border-b border-gray-100 pb-4 mb-6 scrollbar-none">
@@ -449,7 +476,7 @@ export default function GeneratorWorkspace({ onBackToHome }) {
                     onClick={() => setActiveTab(tab.key)}
                     className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       activeTab === tab.key
-                        ? 'bg-zinc-900 text-white shadow-xs'
+                        ? 'bg-zinc-900 text-white shadow-2xs'
                         : 'bg-gray-100 text-zinc-700 hover:bg-gray-200'
                     }`}
                   >

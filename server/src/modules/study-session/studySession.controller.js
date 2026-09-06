@@ -6,7 +6,8 @@ import * as studySessionService from './studySession.service.js';
  */
 export const createStudySession = async (req, res) => {
   try {
-    const { topic, difficulty, goal, learningGoal, context, userId } = req.body;
+    const { topic, difficulty, goal, learningGoal, context } = req.body;
+    const userId = req.user ? req.user._id : (req.body.userId || null);
 
     if (!topic) {
       return res.status(400).json({ success: false, message: 'Please provide a topic for the study session.' });
@@ -21,12 +22,13 @@ export const createStudySession = async (req, res) => {
 };
 
 /**
- * @desc Get history of all study sessions
+ * @desc Get history of study sessions for logged in user
  * @route GET /api/study/sessions
  */
 export const getAllStudySessions = async (req, res) => {
   try {
-    const sessions = await studySessionService.fetchAllSessions();
+    const userId = req.user ? req.user._id : null;
+    const sessions = await studySessionService.fetchAllSessions(userId);
     res.status(200).json({ success: true, count: sessions.length, data: sessions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -45,6 +47,24 @@ export const getStudySessionById = async (req, res) => {
     }
 
     res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc Delete a study session
+ * @route DELETE /api/study/sessions/:id
+ */
+export const deleteStudySession = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : null;
+    const session = await studySessionService.deleteSession(req.params.id, userId);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Study session not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Study session deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

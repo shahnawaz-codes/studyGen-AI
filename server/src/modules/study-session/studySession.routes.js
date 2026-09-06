@@ -3,6 +3,7 @@ import {
   createStudySession,
   getAllStudySessions,
   getStudySessionById,
+  deleteStudySession,
   generateRoadmapMaterial,
   generateNotesMaterial,
   generateMCQMaterial,
@@ -10,13 +11,18 @@ import {
   generateVivaMaterial,
   generateCodeMaterial,
 } from './studySession.controller.js';
+import { optionalAuth } from '../../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+// Apply optionalAuth so req.user is attached whenever token is sent
+router.use(optionalAuth);
 
 // Session Management Routes
 router.post('/sessions', createStudySession);
 router.get('/sessions', getAllStudySessions);
 router.get('/sessions/:id', getStudySessionById);
+router.delete('/sessions/:id', deleteStudySession);
 
 // On-Demand Material Generation Routes
 router.post('/sessions/:sessionId/roadmap', generateRoadmapMaterial);
